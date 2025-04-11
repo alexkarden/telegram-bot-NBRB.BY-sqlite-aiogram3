@@ -7,7 +7,7 @@ start_keyboard_inline = InlineKeyboardMarkup(inline_keyboard=[
 
 start_keyboard_reply = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text="💸 Курсы популярных валют"), KeyboardButton(text="📝 Все курсы")],
-    [KeyboardButton(text="⚙️ Настройки")]
+    [KeyboardButton(text="⚙️ Меню")]
     ], resize_keyboard=True)
 
 

@@ -4,7 +4,7 @@ import logging
 from aiogram import Bot
 import asyncio
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from config import DATABASE_NAME, SHORTLISTOFCURRENCY
 
 
@@ -89,6 +89,7 @@ async def init_db():
                              "CREATE TABLE IF NOT EXISTS currency_rates ("
                              "id INTEGER PRIMARY KEY,"
                              "date INTEGER UNIQUE NOT NULL,"
+                             "date_refresh INTEGER,"
                              "AUD_rate REAL, AUD_scale INTEGER , AUD_name TEXT, "
                              "AMD_rate REAL, AMD_scale INTEGER , AMD_name TEXT, "
                              "BGN_rate REAL, BGN_scale INTEGER , BGN_name TEXT, "
@@ -127,11 +128,13 @@ async def init_db():
 
 
 async def add_db():
+    date_refresh = int(time.time())
     try:
         async with aiosqlite.connect(DATABASE_NAME) as db:
 
             for rate in get_exchange_rates():
                 currency_date = convert_str_to_date(rate['Date'])
+
                 currency_code = rate['Cur_Abbreviation']
                 currency_scale = int(rate['Cur_Scale'])
                 currency_rate = rate['Cur_OfficialRate']
@@ -141,11 +144,11 @@ async def add_db():
                     result = await cursor.fetchall()
 
                     if not result:  # Проверяем, пуст ли список
-                        await db.execute(F"INSERT INTO currency_rates (date, {currency_code}_rate, {currency_code}_scale, {currency_code}_name ) VALUES (?,?,?,?);", (currency_date, currency_rate, currency_scale, currency_name))
+                        await db.execute(F"INSERT INTO currency_rates (date, date_refresh, {currency_code}_rate, {currency_code}_scale, {currency_code}_name ) VALUES (?,?,?,?,?);", (currency_date, date_refresh, currency_rate, currency_scale, currency_name))
                     else:
                         await db.execute(
-                            f"UPDATE currency_rates SET {currency_code}_rate = ?, {currency_code}_scale = ?, {currency_code}_name = ? WHERE date = ?;",
-                            (currency_rate, currency_scale, currency_name, currency_date))
+                            f"UPDATE currency_rates SET date_refresh = ?, {currency_code}_rate = ?, {currency_code}_scale = ?, {currency_code}_name = ? WHERE date = ?;",
+                            (date_refresh, currency_rate, currency_scale, currency_name, currency_date))
 
             await db.commit()  # Не забудьте зафиксировать изменения
     except aiosqlite.Error as e:
@@ -250,7 +253,7 @@ async def get_currency_db(kod):
     try:
         async with aiosqlite.connect(DATABASE_NAME) as db:
             async with db.execute(
-                f"SELECT date, {kod}_rate AS rate, {kod}_scale AS scale, {kod}_name AS name FROM currency_rates ORDER BY date DESC LIMIT 1;"
+                f"SELECT date, {kod}_rate AS rate, {kod}_scale AS scale, {kod}_name AS name, date_refresh FROM currency_rates ORDER BY date DESC LIMIT 1;"
             ) as cursor:
                 result = await cursor.fetchone()  # Используйте fetchone для получения одной записи
 
@@ -263,20 +266,33 @@ async def get_currency_db(kod):
         logging.error(f"Ошибка при работе с базой данных: {e}")
 
 
-
-
 async def all_kurs(currency_list):
     try:
-        text_bot = f'<b>Курсы валют на данный момент:</b>\n\n'
+        y = await get_currency_db('USD')
+        # Конвертация времени Unix в datetime и добавление 3 часов
+        date_object = datetime.utcfromtimestamp(y[0]) + timedelta(hours=3)
+        date_str = date_object.strftime("%d.%m.%Y")
+
+        date_refresh_object = datetime.utcfromtimestamp(y[4]) + timedelta(hours=3)
+        date_refresh_str = date_refresh_object.strftime("%d.%m.%Y г. %H.%M.%S")
+
+        text_bot = f'<b>Курсы валют на {date_str}:</b>\n<i>Обновлено: {date_refresh_str}</i>\n\n'
 
         # Получение и форматирование данных о валютах
         for currency in currency_list:
             x = await get_currency_db(currency)
-            text_bot += f"{get_flag(currency)} {x[2]} {currency} ({x[3]}): <b>{x[1]}</b> BYN\n"
+            if x:  # Проверка на наличие данных
+                text_bot += f"{get_flag(currency)} {x[2]} {currency} ({x[3]}): <b><code>{x[1]}</code></b> BYN\n"
+            else:
+                logging.warning(f"Нет данных для валюты: {currency}")
+                print()
+
         return text_bot
 
     except aiosqlite.Error as e:
         logging.error(f"Ошибка при работе с базой данных: {e}")
+    except Exception as e:
+        logging.error(f"Возникла ошибка: {e}")
 
 
 
