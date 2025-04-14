@@ -74,6 +74,12 @@ async def callback_query(callback: CallbackQuery):
     elif data == '3 раза':
         await callback.answer()
         await callback.message.edit_text(f"Как часто вы хотите получать уведомления о курсах валют в течение дня?\n\n1 раз в день: (14:30)\n3 раза в день: (10:00, 12:30, 15:00)\n\nПри выборе появляется ✅\nДля отмены выбора еще раз нажмите на кнопку.", reply_markup=await create_dynamic_keyboard_select(callback.from_user.id, 'thrice'), parse_mode='HTML')
+    elif data == 'help':
+        await callback.answer()
+        await callback.message.edit_text(
+            f"Команда Help", reply_markup=await create_dynamic_keyboard_select(callback.from_user.id, 'none'), parse_mode='HTML')
+
+
     elif data == 'exit':
         # Удаляем сообщение с клавиатурой
         await callback.message.delete()
