@@ -66,7 +66,8 @@ async def create_dynamic_keyboard_select(tgid, status):
     dynamic_keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=subscription_button_text1, callback_data='1 раз')],
         [InlineKeyboardButton(text=subscription_button_text3, callback_data='3 раза')],
-        [InlineKeyboardButton(text='🔙 Выйти из настроек', callback_data='exit')]
+        [InlineKeyboardButton(text='Помощь', callback_data='help')],
+        [InlineKeyboardButton(text='🔙 Выйти из Меню', callback_data='exit')]
     ])
 
     return dynamic_keyboard
